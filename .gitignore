@@ -1,0 +1,22 @@
+# Environnement virtuel Python
+.venv/
+
+# Fichiers compilés Python
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# macOS
+.DS_Store
+
+# Fichiers de build
+*.egg-info/
+dist/
+build/
+
+# Éditeurs
+.vscode/
+*.swp
