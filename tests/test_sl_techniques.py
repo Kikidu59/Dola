@@ -1,5 +1,5 @@
 """
-test_sl_techniques.py — Tests pour les techniques de Symmetry Learning (DA, FA, EA).
+test_sl_techniques.py — Tests pour les techniques de Symmetry Leveraging (DA, FA, EA).
 
 Vérifie :
     1. sgd_step avec chaque loss_fn (da/fa/ea) conserve la shape des particules
@@ -82,7 +82,9 @@ def test_all_loss_fns_update_particles(any_setup):
         k1, k2, k3, key = jax.random.split(key, 4)
         particles = init_fn(k1, N=20)
         x, y = sample_data(k2, teacher, 20)
-        new_particles = sgd_step(particles, x, y, k3, 50.0, 1e-4, 1e-6, used_loss_fn, project_noise)
+        new_particles = sgd_step(
+            particles, x, y, k3, 50.0, 1e-4, 1e-6, used_loss_fn, project_noise
+        )
         diff = jnp.max(jnp.abs(new_particles - particles))
         assert diff > 1e-8, f"{name} : les particules n'ont pas été mises à jour"
 
@@ -119,9 +121,9 @@ def test_fa_model_equivariant(any_setup):
         qg_at_px = 0.5 * (y_px + y_back_px)
 
         expected = action_on_x(g, qg_at_x)
-        assert jnp.allclose(qg_at_px, expected, atol=TOL), (
-            f"FA équivariance : QΦ(Px)={qg_at_px}, P·QΦ(x)={expected}"
-        )
+        assert jnp.allclose(
+            qg_at_px, expected, atol=TOL
+        ), f"FA équivariance : QΦ(Px)={qg_at_px}, P·QΦ(x)={expected}"
 
 
 # =============================================================================
@@ -147,10 +149,12 @@ def test_ea_particles_stay_in_EG(matrix_setup):
 
     final_particles = history["particles"][-1]
     g = GROUP_ELEMENTS[1]
-    deviations = jax.vmap(lambda z: jnp.max(jnp.abs(action_on_z(g, z) - z)))(final_particles)
-    assert jnp.max(deviations) < 0.01, (
-        f"EA : particules hors de E^G, déviation max = {jnp.max(deviations):.6f}"
+    deviations = jax.vmap(lambda z: jnp.max(jnp.abs(action_on_z(g, z) - z)))(
+        final_particles
     )
+    assert (
+        jnp.max(deviations) < 0.01
+    ), f"EA : particules hors de E^G, déviation max = {jnp.max(deviations):.6f}"
 
 
 def test_da_stays_near_EG_with_equivariant_data(matrix_setup):
@@ -170,10 +174,12 @@ def test_da_stays_near_EG_with_equivariant_data(matrix_setup):
     )
 
     final_particles = history["particles"][-1]
-    deviations = jax.vmap(lambda z: jnp.max(jnp.abs(project_EG(z) - z)))(final_particles)
-    assert jnp.mean(deviations) < 0.5, (
-        f"DA trop loin de E^G : déviation moyenne = {jnp.mean(deviations):.4f}"
+    deviations = jax.vmap(lambda z: jnp.max(jnp.abs(project_EG(z) - z)))(
+        final_particles
     )
+    assert (
+        jnp.mean(deviations) < 0.5
+    ), f"DA trop loin de E^G : déviation moyenne = {jnp.mean(deviations):.4f}"
 
 
 # =============================================================================
@@ -204,10 +210,10 @@ def test_all_schemes_reduce_loss(matrix_setup):
         )
         losses = history["losses"]
         assert len(losses) >= 2, f"{name} : pas assez d'enregistrements de loss"
-        min_later = min(losses[len(losses) // 2:])
-        assert min_later < losses[0], (
-            f"{name} : loss n'a pas diminué ({losses[0]:.6f} → {min_later:.6f})"
-        )
+        min_later = min(losses[len(losses) // 2 :])
+        assert (
+            min_later < losses[0]
+        ), f"{name} : loss n'a pas diminué ({losses[0]:.6f} → {min_later:.6f})"
 
 
 # =============================================================================
