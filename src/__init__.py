@@ -16,6 +16,8 @@ from src.spaces import (
 from src.model import (
     forward,
     forward_batch,
+    forward_resnet,
+    forward_batch_resnet,
 )
 
 from src.teacher import (
@@ -36,14 +38,23 @@ from src.loss import (
 
 from src.training import (
     DEFAULT_CONFIG,
+    DEFAULT_CONFIG_RESNET,
     loss_fn,
     loss_fn_fa,
     loss_fn_ea,
     loss_fn_da,
+    loss_fn_resnet,
+    loss_fn_fa_resnet,
+    loss_fn_ea_resnet,
+    loss_fn_da_resnet,
     sgd_step,
+    sgd_step_resnet,
     init_particles_wi,
     init_particles_si,
+    init_particles_wi_resnet,
+    init_particles_si_resnet,
     train,
+    train_resnet,
 )
 
 

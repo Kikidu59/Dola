@@ -19,7 +19,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.spaces import GROUP_ELEMENTS, action_on_x, action_on_z, project_EG
-from src.model import forward, forward_batch
+from src.model import forward, forward_batch, forward_resnet
 from src.teacher import (
     make_arbitrary_particles,
     make_wi_particles,
@@ -27,7 +27,13 @@ from src.teacher import (
     make_si_particles_uv,
     sample_data,
 )
-from src.loss import quadratic_loss, quadratic_loss_batch, regularization, population_risk
+from src.loss import (
+    quadratic_loss,
+    quadratic_loss_batch,
+    regularization,
+    population_risk,
+)
+from src.training import init_particles_wi_resnet
 
 TOL = 1e-5
 
@@ -201,12 +207,12 @@ def test_si_particles_in_EG(any_setup):
     g = GROUP_ELEMENTS[1]
     for i in range(particles.shape[0]):
         z = particles[i]
-        assert jnp.allclose(action_on_z(g, z), z, atol=TOL), (
-            f"Particule SI {i} non fixée par G"
-        )
-        assert jnp.allclose(project_EG(z), z, atol=TOL), (
-            f"Particule SI {i} déplacée par la projection"
-        )
+        assert jnp.allclose(
+            action_on_z(g, z), z, atol=TOL
+        ), f"Particule SI {i} non fixée par G"
+        assert jnp.allclose(
+            project_EG(z), z, atol=TOL
+        ), f"Particule SI {i} déplacée par la projection"
 
 
 # =============================================================================
@@ -222,13 +228,13 @@ def test_make_si_particles_uv_in_EG(uv_setup):
     g = GROUP_ELEMENTS[1]
     for i in range(particles.shape[0]):
         z = particles[i]
-        assert jnp.allclose(action_on_z(g, z), z, atol=TOL), (
-            f"make_si_particles_uv : particule {i} non dans E^G(UV)"
-        )
+        assert jnp.allclose(
+            action_on_z(g, z), z, atol=TOL
+        ), f"make_si_particles_uv : particule {i} non dans E^G(UV)"
         # Structure concrète : colonnes égales
-        assert jnp.allclose(z[:, 0], z[:, 1], atol=TOL), (
-            f"Particule {i} n'a pas de colonnes égales : {z}"
-        )
+        assert jnp.allclose(
+            z[:, 0], z[:, 1], atol=TOL
+        ), f"Particule {i} n'a pas de colonnes égales : {z}"
 
 
 def test_si_particles_uv_structure(uv_setup):
@@ -236,6 +242,12 @@ def test_si_particles_uv_structure(uv_setup):
     particles = make_si_particles()
     for i in range(particles.shape[0]):
         z = particles[i]
-        assert jnp.allclose(z[:, 0], z[:, 1], atol=TOL), (
-            f"Particule SI {i} n'a pas de colonnes égales en setup UV : {z}"
-        )
+        assert jnp.allclose(
+            z[:, 0], z[:, 1], atol=TOL
+        ), f"Particule SI {i} n'a pas de colonnes égales en setup UV : {z}"
+
+
+def test_forward_resnet_output_shape_matrix(matrix_setup):
+    particles = init_particles_wi_resnet(jax.random.PRNGKey(42), 3, 5)
+    x = jnp.array([1.0, 2.0])
+    assert forward_resnet(x, particles).shape == x.shape

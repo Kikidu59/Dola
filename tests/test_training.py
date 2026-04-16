@@ -21,11 +21,13 @@ from src.spaces import GROUP_ELEMENTS, action_on_z, project_EG
 from src.teacher import make_wi_particles, make_arbitrary_particles
 from src.training import (
     DEFAULT_CONFIG,
+    DEFAULT_CONFIG_RESNET,
     loss_fn,
     sgd_step,
     init_particles_wi,
     init_particles_si,
     train,
+    train_resnet,
 )
 
 TOL = 1e-5
@@ -184,4 +186,39 @@ def test_train_uv_arbitrary_teacher(uv_setup):
     assert len(losses) >= 2
     assert losses[-1] < losses[0], (
         f"Loss UV (arbitrary) : {losses[0]:.6f} → {losses[-1]:.6f}"
+    )
+
+
+# =============================================================================
+# Smoke tests ResNet
+# =============================================================================
+
+
+def test_train_resnet_history_structure(matrix_setup):
+    """train_resnet retourne un historique bien formé, sans crash."""
+    key = jax.random.PRNGKey(10)
+    teacher = make_arbitrary_particles()
+    L, M = 3, 10
+    config = {**DEFAULT_CONFIG_RESNET, "T": 1.0, "gr": 2}
+    history = train_resnet(teacher_particles=teacher, M=M, L=L, key=key, config=config, init_type="wi")
+
+    assert "particles" in history
+    assert "losses" in history
+    assert "steps" in history
+    assert history["steps"][0] == 0
+    for p in history["particles"]:
+        assert p.shape == (L, M, 2, 2)
+    assert len(history["losses"]) == len(history["steps"]) - 1
+    assert all(jnp.isfinite(jnp.array(history["losses"]))), "Loss non finie détectée"
+
+
+def test_train_resnet_loss_decreases(matrix_setup):
+    """Sur un court entraînement ResNet, la loss doit diminuer."""
+    key = jax.random.PRNGKey(11)
+    teacher = make_wi_particles()
+    config = {**DEFAULT_CONFIG_RESNET, "T": 3.0, "gr": 3}
+    history = train_resnet(teacher_particles=teacher, M=20, L=3, key=key, config=config, init_type="wi")
+    losses = history["losses"]
+    assert losses[-1] < losses[0], (
+        f"ResNet loss n'a pas diminué : {losses[0]:.6f} → {losses[-1]:.6f}"
     )

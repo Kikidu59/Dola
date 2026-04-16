@@ -55,3 +55,53 @@ def forward_batch(x_batch, particles):
         (M, 2) batch of output vectors
     """
     return jax.vmap(forward, in_axes=(0, None))(x_batch, particles)
+
+
+def forward_resnet(x, particles, alpha_arch=1):
+    """Forward pass of the ResNet for a single input x.
+
+    h_0 = x
+    h_l = h_{l-1} + (alpha_arch / (L * M)) Σᵢ σ*(h_{l-1}, z^{i,l})
+
+    The 1/M factor is handled implicitly by forward() which averages over particles.
+    jax.lax.scan iterates over the L layers (axis 0 of particles) without
+    unrolling the computation graph, keeping JIT compilation efficient.
+
+    Args:
+        x:          (2,) input vector in X = R²
+        particles:  (L, M, 2, 2) array of L layers of M parameter matrices
+        alpha_arch: architectural scaling constant (default 1)
+
+    Returns:
+        (2,) output vector h_L ∈ R²
+    """
+
+    L = particles.shape[0]
+
+    def step(h, l_param):
+        return (
+            h + (alpha_arch / L) * forward(h, l_param),
+            None,
+        )  # The 1/M factor is already accounted in the forward function.
+
+    # Carries x accross the loop applying step for each l in L (axis 0)
+    h_final, _ = jax.lax.scan(step, x, particles)
+    return h_final
+
+
+def forward_batch_resnet(x_batch, particles, alpha_arch=1):
+    """Forward pass of the ResNet for a batch of inputs.
+
+    Vectorizes `forward_resnet` over the batch dimension.
+
+    Args:
+        x_batch:    (B, 2) batch of input vectors
+        particles:  (L, M, 2, 2) array of L layers of M parameter matrices
+        alpha_arch: architectural scaling constant (default 1)
+
+    Returns:
+        (B, 2) batch of output vectors
+    """
+    return jax.vmap(forward_resnet, in_axes=(0, None, None))(
+        x_batch, particles, alpha_arch
+    )
