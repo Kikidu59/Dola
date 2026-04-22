@@ -24,7 +24,13 @@ from src.teacher import (
     make_arbitrary_particles,
     make_wi_particles,
     make_si_particles,
+    make_si_particles_uv,
+    make_arbitrary_particles_resnet,
+    make_wi_particles_resnet,
+    make_si_particles_resnet,
+    make_si_particles_uv_resnet,
     sample_data,
+    sample_data_resnet,
     SCALE,
     SIGMA_PI,
 )
@@ -33,6 +39,7 @@ from src.loss import (
     quadratic_loss,
     quadratic_loss_batch,
     regularization,
+    regularization_resnet,
     population_risk,
 )
 

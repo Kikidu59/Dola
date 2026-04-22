@@ -141,9 +141,9 @@ def test_sigma_star_joint_equivariance(any_setup):
             z = jax.random.normal(k2, shape=(2, 2))
             lhs = sigma_star(action_on_x(g, x), action_on_z(g, z))
             rhs = action_on_x(g, sigma_star(x, z))
-            assert jnp.allclose(lhs, rhs, atol=TOL), (
-                f"Équivariance échouée pour g={g}: LHS={lhs}, RHS={rhs}"
-            )
+            assert jnp.allclose(
+                lhs, rhs, atol=TOL
+            ), f"Équivariance échouée pour g={g}: LHS={lhs}, RHS={rhs}"
 
 
 def test_sigma_star_output_shape(any_setup):
@@ -215,7 +215,7 @@ def test_sigma_star_explicit_uv(uv_setup):
     → sortie = [0, -sigmoid(2)]."""
     x = jnp.array([1.0, 0.0])
     z = jnp.array([[2.0, 0.0], [0.0, -1.0]])
-    s = float(jax.nn.sigmoid(jnp.array(2.0)))
+    s = float(jax.nn.sigmoid(jnp.array(1.0)))
     expected = jnp.array([0.0, -s])
     assert jnp.allclose(sigma_star(x, z), expected, atol=TOL)
 

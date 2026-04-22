@@ -64,6 +64,11 @@ def regularization(particles):
     return jnp.mean(norms_sq)
 
 
+def regularization_resnet(particles):
+    """(1/(L*M)) Σ_l Σ_i ||z^{i,l}||²_F"""
+    return regularization(particles.reshape(-1, 2, 2))
+
+
 def population_risk(particles, x_batch, y_batch, tau=1e-4):
     """Estimate the regularized population risk by Monte Carlo.
 

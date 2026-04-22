@@ -74,7 +74,7 @@ def make_setup_uv():
 
     def sigma_star(x, z):
         u, v = z[0], z[1]
-        return v * jax.nn.sigmoid(jnp.dot(u, x))
+        return v * jax.nn.sigmoid(jnp.dot(u, x) / u.shape[0])
 
     def act_on_z(g, z):
         # M_g·(u, v) = (g·u, g·v)

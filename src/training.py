@@ -19,8 +19,8 @@ import jax
 import jax.numpy as jnp
 from src.spaces import project_EG, GROUP_ELEMENTS, action_on_x
 from src.model import forward_batch, forward_batch_resnet
-from src.loss import quadratic_loss_batch, regularization
-from src.teacher import sample_data
+from src.loss import quadratic_loss_batch, regularization, regularization_resnet
+from src.teacher import sample_data, sample_data_resnet
 
 # =============================================================================
 # Default hyperparameters (from Appendix F, page 49)
@@ -37,6 +37,7 @@ DEFAULT_CONFIG = {
 
 DEFAULT_CONFIG_RESNET = {
     "alpha": 5.0,
+    "tau": 1e-4,
     "beta": 1e-6,
     "alpha_arch": 1,
     "batch_size": 20,
@@ -107,13 +108,15 @@ def loss_fn_ea(particles, x_batch, y_batch, tau):
 # ResNet version of the loss functions.
 
 
-def loss_fn_resnet(particles, x_batch, y_batch, alpha_arch):
+def loss_fn_resnet(particles, x_batch, y_batch, alpha_arch, tau):
     """Vanilla ResNet loss: ℓ(h_L(x), y). No regularization."""
     y_pred = forward_batch_resnet(x_batch, particles, alpha_arch)
-    return quadratic_loss_batch(y_pred, y_batch)
+    return quadratic_loss_batch(y_pred, y_batch) + tau * regularization_resnet(
+        particles
+    )
 
 
-def loss_fn_fa_resnet(particles, x_batch, y_batch, alpha_arch):
+def loss_fn_fa_resnet(particles, x_batch, y_batch, alpha_arch, tau):
     """FA ResNet loss: symmetrizes the output via Q_G · h_L(x)."""
     g = GROUP_ELEMENTS[1]
 
@@ -123,10 +126,12 @@ def loss_fn_fa_resnet(particles, x_batch, y_batch, alpha_arch):
     y_perm_back = jax.vmap(lambda y: action_on_x(g, y))(y_perm)
 
     y_pred_sym = 0.5 * (y_orig + y_perm_back)
-    return quadratic_loss_batch(y_pred_sym, y_batch)
+    return quadratic_loss_batch(y_pred_sym, y_batch) + tau * regularization_resnet(
+        particles
+    )
 
 
-def loss_fn_da_resnet(particles, x_batch, y_batch, alpha_arch):
+def loss_fn_da_resnet(particles, x_batch, y_batch, alpha_arch, tau):
     """DA ResNet loss: averages the loss over all G-transforms of the data."""
     g = GROUP_ELEMENTS[1]
 
@@ -140,10 +145,10 @@ def loss_fn_da_resnet(particles, x_batch, y_batch, alpha_arch):
     y_pred_perm = forward_batch_resnet(x_perm, particles, alpha_arch)
     loss_perm = quadratic_loss_batch(y_pred_perm, y_perm)
 
-    return 0.5 * (loss_orig + loss_perm)
+    return 0.5 * (loss_orig + loss_perm) + tau * regularization_resnet(particles)
 
 
-def loss_fn_ea_resnet(particles, x_batch, y_batch, alpha_arch):
+def loss_fn_ea_resnet(particles, x_batch, y_batch, alpha_arch, tau):
     """EA ResNet loss: projects all particles onto E^G before the forward pass.
 
     Requires double-vmap since particles has shape (L, M, 2, 2):
@@ -151,7 +156,9 @@ def loss_fn_ea_resnet(particles, x_batch, y_batch, alpha_arch):
     """
     particles_proj = jax.vmap(jax.vmap(project_EG))(particles)
     y_pred = forward_batch_resnet(x_batch, particles_proj, alpha_arch)
-    return quadratic_loss_batch(y_pred, y_batch)
+    return quadratic_loss_batch(y_pred, y_batch) + tau * regularization_resnet(
+        particles_proj
+    )
 
 
 # def augment_data(x_batch, y_batch, key):
@@ -216,13 +223,23 @@ def sgd_step(
     return particles - alpha * grad + noise_scale * noise
 
 
-@jax.jit(static_argnames=["used_loss_fn", "project_noise"])
+@jax.jit(
+    static_argnames=[
+        "used_loss_fn",
+        "project_noise",
+        "alpha",
+        "tau",
+        "alpha_arch",
+        "beta",
+    ]
+)
 def sgd_step_resnet(
     particles,
     x_batch,
     y_batch,
     key,
     alpha,
+    tau,
     beta,
     alpha_arch,
     used_loss_fn,
@@ -239,6 +256,7 @@ def sgd_step_resnet(
         key:           JAX random key
         alpha:         learning rate
         beta:          noise intensity
+        tau:           regularization strenght
         alpha_arch:    architectural scaling constant
         used_loss_fn:  ResNet loss function to differentiate
         project_noise: if True, project noise onto E^G (for SI init)
@@ -248,7 +266,12 @@ def sgd_step_resnet(
     """
     M = particles.shape[1]
     L = particles.shape[0]
-    grad = jax.grad(used_loss_fn, argnums=0)(particles, x_batch, y_batch, alpha_arch)
+    grad = jax.grad(used_loss_fn, argnums=0)(
+        particles, x_batch, y_batch, alpha_arch, tau
+    )
+    if beta == 0.0:
+        return particles - alpha * grad
+
     noise = jax.random.normal(key, shape=particles.shape)
     noise = jax.lax.cond(
         project_noise,
@@ -400,6 +423,7 @@ def train_resnet(
     alpha = config["alpha"]
     alpha_arch = config["alpha_arch"]
     beta = config["beta"]
+    tau = config["tau"]
     B = config["batch_size"]
     T = config["T"]
     gr = config["gr"]
@@ -423,7 +447,9 @@ def train_resnet(
         key, data_key, noise_key = jax.random.split(key, 3)
 
         # Sample fresh minibatch
-        x_batch, y_batch = sample_data(data_key, teacher_particles, B)
+        x_batch, y_batch = sample_data_resnet(
+            data_key, teacher_particles, B, alpha_arch
+        )
 
         # Optional data augmentation (for DA)
         # if augment_fn is not None:
@@ -436,6 +462,7 @@ def train_resnet(
             y_batch,
             noise_key,
             alpha,
+            tau,
             beta,
             alpha_arch,
             used_loss_fn,
@@ -445,8 +472,10 @@ def train_resnet(
         # Save snapshots
         if (k + 1) % save_every == 0 or k == Ne - 1:
             key, eval_key = jax.random.split(key)
-            x_eval, y_eval = sample_data(eval_key, teacher_particles, 100)
-            loss_val = loss_fn_resnet(particles, x_eval, y_eval, alpha_arch)
+            x_eval, y_eval = sample_data_resnet(
+                eval_key, teacher_particles, 100, alpha_arch
+            )
+            loss_val = loss_fn_resnet(particles, x_eval, y_eval, alpha_arch, tau)
             history["particles"].append(particles)
             history["losses"].append(float(loss_val))
             history["steps"].append(k + 1)
