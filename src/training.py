@@ -35,6 +35,21 @@ DEFAULT_CONFIG = {
     "gr": 5,
 }
 
+# Shallow NN with the (u, v) unit map  σ*(x; (u, v)) = u·σ(vᵀx).
+# This activation has a different gradient scale than the matrix unit σ(z·x),
+# so the matrix-tuned learning rate (alpha = 50) is too large here: it makes the
+# dynamics numerically unstable, the loss stops decreasing, and even the
+# equivariance-preserving schemes (DA/FA) drift off E^G. A gentler learning rate
+# (and no ridge regularization) restores the expected behaviour.
+DEFAULT_CONFIG_UV = {
+    "alpha": 5.0,
+    "tau": 0.0,
+    "beta": 1e-6,
+    "batch_size": 20,
+    "T": 20.0,
+    "gr": 5,
+}
+
 DEFAULT_CONFIG_RESNET = {
     "alpha": 5.0,
     "tau": 1e-4,

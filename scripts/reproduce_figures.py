@@ -16,10 +16,14 @@ families of figures used in the report (all under SI initialization):
         - NN:     N = 500 particles
         - ResNet: (M = 5, L = 500)
 
-All hyperparameters come straight from the configs defined in src/training.py
-(DEFAULT_CONFIG for the NN, DEFAULT_CONFIG_RESNET for the ResNet); in particular
-the SGD horizon is T = 20 (NN) and T = 5 (ResNet). The same configs are used for
-both the matrix and uv setups. Figures are saved as PDF (English labels).
+All hyperparameters come straight from the configs defined in src/training.py.
+The config is chosen per (architecture, setup):
+  - NN / matrix : DEFAULT_CONFIG        (alpha = 50)
+  - NN / uv     : DEFAULT_CONFIG_UV     (alpha = 5, tau = 0) — the (u,v) unit is
+                  numerically unstable with the matrix-tuned alpha = 50.
+  - ResNet      : DEFAULT_CONFIG_RESNET (both setups).
+The SGD horizon is pinned to T = 20 (NN) and T = 5 (ResNet). Figures are saved as
+PDF (English labels).
 
 Seeds: for repetition `rep` at width/depth `size`, the base key is
 PRNGKey(rep * 1000 + size); each technique then uses fold_in(base, technique_idx).
@@ -74,6 +78,7 @@ from src.training import (
     init_particles_si_resnet,
     init_particles_wi_resnet,
     DEFAULT_CONFIG,
+    DEFAULT_CONFIG_UV,
     DEFAULT_CONFIG_RESNET,
 )
 from src.teacher import (
@@ -126,14 +131,23 @@ TEACHER_LABEL = {"WI": "WI teacher", "arbitrary": "arbitrary teacher"}
 # =============================================================================
 
 
-def nn_config(T=20.0):
-    """NN config = DEFAULT_CONFIG with the horizon pinned to T."""
-    return {**DEFAULT_CONFIG, "T": T}
+def config_for(arch, setup_name, T):
+    """Hyperparameter config for a given architecture AND activation setup.
 
-
-def resnet_config(T=5.0):
-    """ResNet config = DEFAULT_CONFIG_RESNET with the horizon pinned to T."""
-    return {**DEFAULT_CONFIG_RESNET, "T": T}
+    The right config depends on the setup, not just the architecture:
+      - NN / matrix : DEFAULT_CONFIG       (alpha = 50)
+      - NN / uv     : DEFAULT_CONFIG_UV    (alpha = 5, tau = 0) — the (u,v) unit
+                      is unstable with the matrix-tuned alpha = 50.
+      - ResNet      : DEFAULT_CONFIG_RESNET for BOTH setups (its residual blocks
+                      already use a small learning rate; the uv ResNet notebook
+                      did not override alpha/tau either).
+    The SGD horizon T is pinned explicitly.
+    """
+    if arch == "NN":
+        base = DEFAULT_CONFIG_UV if setup_name == "uv" else DEFAULT_CONFIG
+    else:  # ResNet — same config for matrix and uv
+        base = DEFAULT_CONFIG_RESNET
+    return {**base, "T": T}
 
 
 # =============================================================================
@@ -396,17 +410,18 @@ def main():
         nn_sizes, resnet_depths = [5, 10], [1, 5]
         nn_loss_n, resnet_loss_l = 10, 5
         reps = min(args.reps, 2)
-        cfg_nn, cfg_rn = nn_config(T=1.0), resnet_config(T=0.5)
+        nn_T, rn_T = 1.0, 0.5
     else:
         nn_sizes, resnet_depths = NN_SIZES, RESNET_DEPTHS
         nn_loss_n, resnet_loss_l = NN_LOSS_N, RESNET_LOSS_L
         reps = args.reps
-        cfg_nn, cfg_rn = nn_config(T=20.0), resnet_config(T=5.0)
+        nn_T, rn_T = 20.0, 5.0
 
-    # (arch, sweep sizes, x-axis label, loss-curve size, config)
+    # (arch, sweep sizes, x-axis label, loss-curve size, horizon T)
+    # The config itself is resolved per (arch, setup) inside the loop below.
     archs = [
-        ("NN", nn_sizes, "Number of particles (N)", nn_loss_n, cfg_nn),
-        ("ResNet", resnet_depths, "ResNet depth (L)", resnet_loss_l, cfg_rn),
+        ("NN", nn_sizes, "Number of particles (N)", nn_loss_n, nn_T),
+        ("ResNet", resnet_depths, "ResNet depth (L)", resnet_loss_l, rn_T),
     ]
     if args.arch:
         archs = [a for a in archs if a[0] == args.arch]
@@ -414,7 +429,8 @@ def main():
     for setup_name in setups:
         set_setup(setup_name)
         print(f"\n=== SETUP: {setup_name} ===")
-        for arch, sizes, xlabel, loss_size, config in archs:
+        for arch, sizes, xlabel, loss_size, T in archs:
+            config = config_for(arch, setup_name, T)
             for kind in teachers:
                 tlab = TEACHER_LABEL[kind]
 

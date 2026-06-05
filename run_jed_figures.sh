@@ -30,7 +30,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=8G
-#SBATCH --time=03:00:00
+#SBATCH --time=06:00:00
 #SBATCH --output=dola_figures_%A_%a.out
 
 set -euo pipefail
