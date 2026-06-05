@@ -8,6 +8,12 @@ from plotly.subplots import make_subplots
 
 
 DEFAULT_MARKERS = {"vanilla": "o", "DA": "s", "FA": "^", "EA": "D"}
+DEFAULT_COLORS = {
+    "vanilla": "#1f77b4",
+    "DA": "#ff7f0e",
+    "FA": "#2ca02c",
+    "EA": "#d62728",
+}
 
 _DOWNLOAD_CONFIG = {
     "toImageButtonOptions": {
@@ -17,35 +23,187 @@ _DOWNLOAD_CONFIG = {
 }
 
 
-def plot_rmd_curves(x_values, results, xlabel, title, markers=None, exclude=None):
+def plot_loss_curves(
+    x_values,
+    results,
+    xlabel,
+    title,
+    save_pdf=False,
+    filename=None,
+    markers=None,
+    colors=None,
+    exclude=None,
+):
+    """Plot final training loss vs a parameter (N or L) for multiple schemes.
+
+    Args:
+        x_values: parameter values on the x-axis (e.g. N or L)
+        results:  dict scheme → list-of-lists of final loss values per repetition
+        xlabel:   x-axis label
+        title:    plot title
+        save_pdf: save the figure as a PDF file if True
+        filename: PDF filename; auto-generated from title if None
+        markers:  dict scheme → matplotlib marker; defaults to DEFAULT_MARKERS
+        colors:   dict scheme → color; defaults to DEFAULT_COLORS
+        exclude:  collection of scheme names to skip
+    """
+    if markers is None:
+        markers = DEFAULT_MARKERS
+    if colors is None:
+        colors = DEFAULT_COLORS
+    skip = set(exclude) if exclude else set()
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    for name, reps_per_x in results.items():
+        if name in skip:
+            continue
+        means = [np.mean(r) for r in reps_per_x]
+        stds = [np.std(r) for r in reps_per_x]
+        ax.errorbar(
+            x_values,
+            means,
+            yerr=stds,
+            marker=markers.get(name, "o"),
+            color=colors.get(name, None),
+            label=name,
+            capsize=3,
+        )
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("Final training loss")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    if save_pdf:
+        if filename is None:
+            safe = title.replace(" ", "_").replace("—", "-").replace("/", "_")
+            filename = f"{safe}.pdf"
+        fig.savefig(filename, format="pdf", bbox_inches="tight")
+    plt.show()
+
+
+def plot_training_curves(
+    histories_per_scheme,
+    title,
+    save_pdf=False,
+    filename=None,
+    markers=None,
+    colors=None,
+    exclude=None,
+):
+    """Plot loss vs SGD step for multiple training schemes.
+
+    Each scheme shows mean loss with ±1 std shaded band across repetitions.
+
+    Args:
+        histories_per_scheme: dict scheme → list of history dicts (from train() /
+                              train_resnet()). Each dict has "steps" and "losses".
+        title:    plot title
+        save_pdf: save the figure as PDF if True
+        filename: PDF filename; auto-generated from title if None
+        markers:  dict scheme → marker; defaults to DEFAULT_MARKERS
+        colors:   dict scheme → color; defaults to DEFAULT_COLORS
+        exclude:  collection of scheme names to skip
+    """
+    if markers is None:
+        markers = DEFAULT_MARKERS
+    if colors is None:
+        colors = DEFAULT_COLORS
+    skip = set(exclude) if exclude else set()
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for name, histories in histories_per_scheme.items():
+        if name in skip:
+            continue
+        # steps[1:] aligns with losses (step 0 is the init state, no loss recorded)
+        steps = np.array(histories[0]["steps"][1:])
+        loss_matrix = np.stack(
+            [np.array(h["losses"]) for h in histories]
+        )  # (n_reps, n_steps)
+        mean = loss_matrix.mean(axis=0)
+        std = loss_matrix.std(axis=0)
+        color = colors.get(name, None)
+        n_pts = len(steps)
+        ax.plot(
+            steps,
+            mean,
+            marker=markers.get(name, "o"),
+            color=color,
+            label=name,
+            markersize=4,
+            markevery=max(1, n_pts // 5),
+        )
+        ax.fill_between(
+            steps,
+            np.maximum(mean - std, 1e-12),
+            mean + std,
+            alpha=0.2,
+            color=color,
+        )
+    ax.set_yscale("log")
+    ax.set_xlabel("SGD step")
+    ax.set_ylabel("Loss")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    if save_pdf:
+        if filename is None:
+            safe = title.replace(" ", "_").replace("—", "-").replace("/", "_")
+            filename = f"{safe}.pdf"
+        fig.savefig(filename, format="pdf", bbox_inches="tight")
+    plt.show()
+
+
+def plot_rmd_curves(
+    x_values,
+    results,
+    xlabel,
+    title,
+    save_pdf=False,
+    filename=None,
+    markers=None,
+    exclude=None,
+):
     if markers is None:
         markers = DEFAULT_MARKERS
     skip = set(exclude) if exclude else set()
+
+    fig, ax = plt.subplots(figsize=(6, 4))
     for name in results:
         if name in skip:
             continue
         means = [jnp.mean(jnp.array(r)) for r in results[name]]
         stds = [jnp.std(jnp.array(r)) for r in results[name]]
-        plt.errorbar(
+        ax.errorbar(
             x_values,
             means,
             yerr=stds,
-            marker=markers[name],
+            marker=markers.get(name, "o"),
+            color=DEFAULT_COLORS.get(name, None),
             label=name,
             capsize=3,
         )
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.xlabel(xlabel)
-    plt.ylabel("RMD² to projected version")
-    plt.title(title)
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("RMD² to projected version")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    if save_pdf:
+        if filename is None:
+            safe = title.replace(" ", "_").replace("—", "-").replace("/", "_")
+            filename = f"{safe}.pdf"
+        fig.savefig(filename, format="pdf", bbox_inches="tight")
     plt.show()
 
 
 def plot_particles_3d(
-    student_particles, teacher_particles, title, show_invariant_plane=False
+    student_particles, teacher_particles, title, show_invariant_plane=True
 ):
     """3D scatter: axes = z1, z2, z3, color = z4.
 
@@ -132,7 +290,7 @@ def plot_particles_3d(
     return fig
 
 
-def plot_uv_equivariance(particles, teacher_particles=None, title=None):
+def plot_uv_equivariance(particles, teacher_particles=None, title=None, save_pdf=False, filename=None):
     """Side-by-side scatter of u = (u_x, u_y) and v = (v_x, v_y) for the UV setup.
 
     A dashed diagonal y = x marks the G-invariant subspace
@@ -202,6 +360,11 @@ def plot_uv_equivariance(particles, teacher_particles=None, title=None):
     if title is not None:
         fig.suptitle(title, fontsize=14, y=1.02)
     fig.tight_layout()
+    if save_pdf:
+        if filename is None:
+            safe = (title or "uv_equivariance").replace(" ", "_").replace("—", "-").replace("/", "_")
+            filename = f"{safe}.pdf"
+        fig.savefig(filename, format="pdf", bbox_inches="tight")
     plt.show()
 
 
@@ -331,17 +494,22 @@ def plot_uv_equivariance_resnet(particles, teacher_particles=None, title=None):
     return fig
 
 
-def plot_particles_3d_resnet(history, teacher_particles, title):
-    """3D scatter with a slider to browse training snapshots.
+def plot_particles_3d_resnet(particles, teacher_particles, title):
+    """3D scatter with a slider to browse ResNet layers.
 
-    A translucent plane shows (the visible part of) the G-invariant subspace E^G.
-    In the matrix setup, E^G = {z : z = P z P} = {[[a,b],[b,a]]}, i.e. z2 = z3
-    AND z1 = z4. The plane is drawn at z2 = z3 and its surface is colored by
-    z4 = z1 (the value z4 must take for a point on the plane to actually be
-    in E^G), using the same Viridis colormap as the student markers.
+    At each layer l, shows the M student particles (z1, z2, z3 axes, z4 as color).
+    The teacher particles are shown as fixed reference markers in every frame.
+    A translucent plane z2 = z3 marks the G-invariant subspace E^G.
+
+    Args:
+        particles:         (L, M, 2, 2) final student particles
+        teacher_particles: (L_t, M_t, 2, 2) or (M_t, 2, 2) teacher
+        title:             figure title
     """
-    snapshots = history["particles"]
-    steps = history["steps"]
+    parts = jnp.array(particles)
+    if parts.ndim == 3:
+        parts = parts[None, ...]
+    L, M = parts.shape[0], parts.shape[1]
 
     T = jnp.array(teacher_particles).reshape(-1, 4)
 
@@ -365,12 +533,8 @@ def plot_particles_3d_resnet(history, teacher_particles, title):
     )
 
     frames = []
-    for snap, step in zip(snapshots, steps):
-        sp = jnp.array(snap)
-        if sp.ndim == 4:
-            sp = sp.reshape(-1, 2, 2)
-        S = sp.reshape(-1, 4)
-
+    for l in range(L):
+        S = parts[l].reshape(M, 4)
         frames.append(
             go.Frame(
                 data=[
@@ -380,7 +544,7 @@ def plot_particles_3d_resnet(history, teacher_particles, title):
                         z=S[:, 2],
                         mode="markers",
                         marker=dict(
-                            size=2,
+                            size=4,
                             color=S[:, 3],
                             colorscale="Viridis",
                             colorbar=dict(title="z4"),
@@ -407,7 +571,7 @@ def plot_particles_3d_resnet(history, teacher_particles, title):
                     ),
                     plane,
                 ],
-                name=str(step),
+                name=str(l),
             )
         )
 
@@ -417,16 +581,16 @@ def plot_particles_3d_resnet(history, teacher_particles, title):
         dict(
             method="animate",
             args=[
-                [str(step)],
+                [str(l)],
                 dict(
                     mode="immediate",
                     frame=dict(duration=0, redraw=True),
                     transition=dict(duration=0),
                 ),
             ],
-            label=str(step),
+            label=str(l),
         )
-        for step in steps
+        for l in range(L)
     ]
 
     fig.update_layout(
@@ -442,7 +606,7 @@ def plot_particles_3d_resnet(history, teacher_particles, title):
         sliders=[
             dict(
                 active=0,
-                currentvalue=dict(prefix="Step: "),
+                currentvalue=dict(prefix="Layer: "),
                 pad=dict(t=50),
                 steps=slider_steps,
             )

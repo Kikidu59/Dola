@@ -78,7 +78,10 @@ from src.metrics import (
 
 from src.utils import (
     DEFAULT_MARKERS,
+    DEFAULT_COLORS,
     plot_rmd_curves,
+    plot_loss_curves,
+    plot_training_curves,
     plot_particles_3d,
     plot_uv_equivariance,
     plot_uv_equivariance_resnet,

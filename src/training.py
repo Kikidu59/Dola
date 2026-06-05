@@ -38,10 +38,10 @@ DEFAULT_CONFIG = {
 DEFAULT_CONFIG_RESNET = {
     "alpha": 5.0,
     "tau": 1e-4,
-    "beta": 1e-6,
+    "beta": 0.0,
     "alpha_arch": 1,
     "batch_size": 20,
-    "T": 20.0,
+    "T": 5.0,
     "gr": 5,
 }
 
