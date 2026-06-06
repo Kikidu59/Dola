@@ -28,7 +28,7 @@
 #SBATCH --array=0-7
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
 #SBATCH --mem=8G
 #SBATCH --time=06:00:00
 #SBATCH --output=dola_figures_%A_%a.out
@@ -58,10 +58,16 @@ if [ ! -d ".venv_jed" ]; then
 fi
 source .venv_jed/bin/activate
 
-# Keep JAX's CPU thread pool within the cores this task was granted (it
-# respects SLURM's CPU affinity), so the 8 concurrent tasks on a node
-# don't oversubscribe each other.
-export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
+# CRITICAL: force single-threaded math. The model is made of tiny 2x2 ops, so
+# spreading each op over many threads only adds synchronisation overhead — and
+# by default XLA-CPU grabs ALL cores of the (many-core) node, so several array
+# tasks sharing a node oversubscribe it badly (this is what blew past the time
+# limit). One thread per task is both faster here and collision-free.
+export XLA_FLAGS="--xla_cpu_multi_thread_eigen=false"
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1   # numpy / POT (OT cost matrix)
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 
 # --- run this one block --------------------------------------------
 OUTDIR="$SLURM_SUBMIT_DIR/figures"
