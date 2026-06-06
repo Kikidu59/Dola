@@ -1,9 +1,14 @@
 # Environnement virtuel Python
 .venv/
+.venv_jed/
 
 # Fichiers compilés Python
 __pycache__/
 *.py[cod]
+
+scan_test.py
+steptime.py
+traintime.py
 
 # Jupyter
 .ipynb_checkpoints/
