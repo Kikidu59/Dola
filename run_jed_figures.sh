@@ -80,11 +80,8 @@ export PYTHONUNBUFFERED=1
 OUTDIR="$SLURM_SUBMIT_DIR/figures"
 mkdir -p "$OUTDIR"
 
-# Repetitions per architecture: 8 for the (heavier) ResNet, 10 for the NN.
-if [ "$ARCH" = "ResNet" ]; then REPS=8; else REPS=10; fi
-
 srun python -u scripts/reproduce_figures.py \
-    --reps "$REPS" \
+    --reps 10 \
     --setup "$SETUP" \
     --arch "$ARCH" \
     --teacher "$TEACHER" \

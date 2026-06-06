@@ -8,7 +8,7 @@ families of figures used in the report (all under SI initialization):
       for every architecture (NN, ResNet), both activation setups (matrix, uv),
       both teachers (WI, arbitrary), and every SL technique (vanilla, DA, FA, EA).
         - NN:     swept over N = [10, 50, 100, 500, 1000]
-        - ResNet: swept over L = [10, 50, 100, 500, 800] with width M = 5
+        - ResNet: swept over L = [10, 50, 100, 500, 1000] with width M = 5
       For the ResNet, the plotted quantity is the RMD^2 to E^G averaged over the
       L layers, i.e. mean_l RMD^2(nu_l, (nu_l)^{E^G}).
 
@@ -97,7 +97,7 @@ from src.utils import plot_rmd_curves, plot_training_curves
 # =============================================================================
 
 NN_SIZES = [10, 50, 100, 500, 1000]  # NN: number of particles N
-RESNET_DEPTHS = [10, 50, 100, 500, 800]  # ResNet: depth L
+RESNET_DEPTHS = [10, 50, 100, 500, 1000]  # ResNet: depth L
 RESNET_WIDTH_M = 5  # ResNet: particles per layer M
 
 NN_LOSS_N = 500  # loss-vs-step: NN width

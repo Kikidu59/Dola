@@ -8,6 +8,8 @@ where θ = (θ₁, ..., θ_N) ∈ Z^N are the N "particles" (each a 2x2 matrix),
 and σ*(x, z) = σ(z · x) is the jointly equivariant activation from spaces.py.
 """
 
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 from src.spaces import sigma_star
@@ -89,10 +91,18 @@ def forward_resnet(x, particles, alpha_arch=1):
     return h_final
 
 
+@partial(jax.jit, static_argnames=["alpha_arch"])
 def forward_batch_resnet(x_batch, particles, alpha_arch=1):
     """Forward pass of the ResNet for a batch of inputs.
 
     Vectorizes `forward_resnet` over the batch dimension.
+
+    JIT-compiled: this forward is called EAGERLY in the training loop (to sample
+    the teacher's minibatch via sample_data_resnet, and to evaluate the loss at
+    snapshots). Without jit, its lax.scan runs interpreted op-by-op (~100 ms per
+    call), which dominated ResNet training time; compiled it is ~1000x faster.
+    Nesting this inside the already-jitted loss/step functions is fine (XLA
+    inlines it), and jit does not change the numerics.
 
     Args:
         x_batch:    (B, 2) batch of input vectors
