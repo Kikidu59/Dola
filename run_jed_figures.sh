@@ -58,23 +58,30 @@ if [ ! -d ".venv_jed" ]; then
 fi
 source .venv_jed/bin/activate
 
-# CRITICAL: force single-threaded math. The model is made of tiny 2x2 ops, so
-# spreading each op over many threads only adds synchronisation overhead — and
-# by default XLA-CPU grabs ALL cores of the (many-core) node, so several array
-# tasks sharing a node oversubscribe it badly (this is what blew past the time
-# limit). One thread per task is both faster here and collision-free.
-export XLA_FLAGS="--xla_cpu_multi_thread_eigen=false"
+# Thread control. Do NOT disable XLA's Eigen threadpool
+# (--xla_cpu_multi_thread_eigen=false): on this cluster's JAX it DEADLOCKS the
+# lax.scan used by the ResNet forward/backward (the job then sits at 0% CPU).
+# Instead we simply rely on SLURM's cgroup: with cpus-per-task=2, XLA-CPU sees
+# only 2 cores, so there is no node-wide oversubscription. We still pin the
+# numpy/BLAS/POT thread pools, which are independent of XLA.
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1   # numpy / POT (OT cost matrix)
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
+# Unbuffered stdout so the `size=... done` progress lines show up in the .out
+# file LIVE instead of being held in Python's block buffer until the job ends.
+export PYTHONUNBUFFERED=1
+
 # --- run this one block --------------------------------------------
 OUTDIR="$SLURM_SUBMIT_DIR/figures"
 mkdir -p "$OUTDIR"
 
-srun python scripts/reproduce_figures.py \
-    --reps 10 \
+# Repetitions per architecture: 8 for the (heavier) ResNet, 10 for the NN.
+if [ "$ARCH" = "ResNet" ]; then REPS=8; else REPS=10; fi
+
+srun python -u scripts/reproduce_figures.py \
+    --reps "$REPS" \
     --setup "$SETUP" \
     --arch "$ARCH" \
     --teacher "$TEACHER" \
