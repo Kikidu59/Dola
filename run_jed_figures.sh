@@ -18,7 +18,10 @@
 #     python -m venv .venv_jed
 #     source .venv_jed/bin/activate
 #     pip install --upgrade pip
-#     pip install jax matplotlib plotly numpy pot     # CPU build of JAX
+#     pip install "jax==0.9.1" "jaxlib==0.9.1" matplotlib plotly numpy pot
+#     # ^ PIN JAX 0.9.1 (the version in uv.lock). Newer 0.10.x DEADLOCKS the
+#     #   lax.scan used by the ResNet on XLA-CPU (job sits at 0% CPU forever);
+#     #   the NN path has no scan and is unaffected.
 #
 # Then submit:   sbatch run_jed_figures.sh
 # ===================================================================
