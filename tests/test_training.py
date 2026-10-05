@@ -1,13 +1,13 @@
 """
-test_training.py — Tests pour la boucle d'entraînement.
+test_training.py — Tests for the training loop.
 
-Vérifie :
-    1. L'initialisation produit les bonnes shapes et propriétés
-    2. Un step SGD met à jour les particules et conserve la shape
-    3. L'initialisation SI place les particules dans E^G
-    4. Le bruit projeté reste dans E^G
-    5. La loss diminue sur un court entraînement
-    6. La boucle train retourne un historique bien formé
+Checks that:
+    1. Initialization produces the right shapes and properties
+    2. One SGD step updates the particles and preserves the shape
+    3. SI initialization places the particles in E^G
+    4. Projected noise stays in E^G
+    5. The loss decreases over a short training run
+    6. The train loop returns a well-formed history
 """
 
 import jax
@@ -34,50 +34,50 @@ TOL = 1e-5
 
 
 # =============================================================================
-# Tests d'initialisation
+# Initialization tests
 # =============================================================================
 
 
 def test_init_wi_shape():
-    """L'initialisation WI produit (N, 2, 2) particules."""
+    """WI initialization produces (N, 2, 2) particles."""
     particles = init_particles_wi(jax.random.PRNGKey(0), N=50)
     assert particles.shape == (50, 2, 2)
 
 
 def test_init_si_shape():
-    """L'initialisation SI produit (N, 2, 2) particules."""
+    """SI initialization produces (N, 2, 2) particles."""
     particles = init_particles_si(jax.random.PRNGKey(0), N=50)
     assert particles.shape == (50, 2, 2)
 
 
 def test_init_si_in_EG(any_setup):
-    """Chaque particule SI est dans E^G : M_g·θ = θ et project_EG(θ) = θ."""
+    """Every SI particle lies in E^G: M_g·θ = θ and project_EG(θ) = θ."""
     particles = init_particles_si(jax.random.PRNGKey(1), N=50)
     g = GROUP_ELEMENTS[1]
     for i in range(particles.shape[0]):
         z = particles[i]
         assert jnp.allclose(action_on_z(g, z), z, atol=TOL), (
-            f"Particule SI {i} non fixée par G"
+            f"SI particle {i} is not fixed by G"
         )
         assert jnp.allclose(project_EG(z), z, atol=TOL), (
-            f"Particule SI {i} déplacée par la projection"
+            f"SI particle {i} is moved by the projection"
         )
 
 
 def test_init_wi_statistics():
-    """L'initialisation WI est N(0, 1/16) : variance ≈ 1/16 = 0.0625."""
+    """WI initialization is N(0, 1/16): variance ≈ 1/16 = 0.0625."""
     particles = init_particles_wi(jax.random.PRNGKey(2), N=5000)
     var = jnp.var(particles)
     assert jnp.abs(var - 1.0 / 16.0) < 0.01, f"Variance = {var}"
 
 
 # =============================================================================
-# Tests d'un step SGD
+# Single SGD step tests
 # =============================================================================
 
 
 def test_sgd_step_shape(any_setup):
-    """sgd_step sans bruit projeté conserve la shape."""
+    """sgd_step without projected noise preserves the shape."""
     key = jax.random.PRNGKey(3)
     k1, k2, k3 = jax.random.split(key, 3)
     N = 20
@@ -89,7 +89,7 @@ def test_sgd_step_shape(any_setup):
 
 
 def test_sgd_step_projected_shape(any_setup):
-    """sgd_step avec bruit projeté conserve la shape."""
+    """sgd_step with projected noise preserves the shape."""
     key = jax.random.PRNGKey(5)
     k1, k2, k3 = jax.random.split(key, 3)
     N = 20
@@ -101,7 +101,7 @@ def test_sgd_step_projected_shape(any_setup):
 
 
 def test_sgd_step_actually_updates(any_setup):
-    """Après un step SGD, les particules doivent avoir changé."""
+    """After one SGD step, the particles must have changed."""
     key = jax.random.PRNGKey(4)
     k1, k2, k3 = jax.random.split(key, 3)
     particles = init_particles_wi(k1, N=20)
@@ -111,7 +111,7 @@ def test_sgd_step_actually_updates(any_setup):
 
 
 def test_projected_noise_in_EG(any_setup):
-    """Le bruit projeté via project_EG est bien dans E^G."""
+    """Noise projected with project_EG lies in E^G."""
     key = jax.random.PRNGKey(6)
     noise = jax.random.normal(key, shape=(50, 2, 2))
     noise_proj = jax.vmap(project_EG)(noise)
@@ -121,12 +121,12 @@ def test_projected_noise_in_EG(any_setup):
 
 
 # =============================================================================
-# Tests de la boucle train — setup matrix pour stabilité numérique
+# Training loop tests — matrix setup for numerical stability
 # =============================================================================
 
 
 def test_loss_decreases(matrix_setup):
-    """Sur un court entraînement, la loss doit diminuer."""
+    """The loss must decrease over a short training run."""
     key = jax.random.PRNGKey(7)
     teacher = make_wi_particles()
     config = {**DEFAULT_CONFIG, "T": 5.0, "gr": 5}
@@ -134,12 +134,12 @@ def test_loss_decreases(matrix_setup):
     losses = history["losses"]
     assert len(losses) >= 2
     assert losses[-1] < losses[0], (
-        f"La loss n'a pas diminué : {losses[0]:.6f} → {losses[-1]:.6f}"
+        f"Loss did not decrease: {losses[0]:.6f} → {losses[-1]:.6f}"
     )
 
 
 def test_train_history_structure(matrix_setup):
-    """train retourne un dict historique bien formé."""
+    """train returns a well-formed history dict."""
     key = jax.random.PRNGKey(8)
     teacher = make_arbitrary_particles()
     config = {**DEFAULT_CONFIG, "T": 2.0, "gr": 2}
@@ -156,8 +156,8 @@ def test_train_history_structure(matrix_setup):
 
 
 def test_train_si_init_stays_near_EG(matrix_setup):
-    """Avec init SI et teacher WI (vanilla), les particules restent proches de E^G
-    (propriété large-N, threshold généreux)."""
+    """With SI init and a WI teacher (vanilla), the particles stay close to E^G
+    (large-N property, generous threshold)."""
     key = jax.random.PRNGKey(9)
     teacher = make_wi_particles()
     config = {**DEFAULT_CONFIG, "beta": 0.0, "T": 2.0, "gr": 2}
@@ -166,36 +166,36 @@ def test_train_si_init_stays_near_EG(matrix_setup):
     g = GROUP_ELEMENTS[1]
     deviations = jax.vmap(lambda z: jnp.max(jnp.abs(action_on_z(g, z) - z)))(final_particles)
     assert jnp.mean(deviations) < 0.5, (
-        f"Particules SI trop loin de E^G : déviation moyenne = {jnp.mean(deviations):.4f}"
+        f"SI particles too far from E^G: mean deviation = {jnp.mean(deviations):.4f}"
     )
 
 
 # =============================================================================
-# Test setup UV — teacher arbitrary pour éviter l'instabilité UV+WI
+# UV setup — arbitrary teacher, to avoid the UV + WI instability
 # =============================================================================
 
 
 def test_train_uv_arbitrary_teacher(uv_setup):
-    """Entraînement court avec setup UV + teacher arbitrary : la loss doit diminuer."""
+    """Short training run with UV setup + arbitrary teacher: the loss must decrease."""
     key = jax.random.PRNGKey(42)
     teacher = make_arbitrary_particles()
-    # T petit et N petit pour éviter l'explosion de v documentée avec WI+UV
+    # Small T and small N to avoid the documented blow-up of v with WI + UV
     config = {**DEFAULT_CONFIG, "T": 2.0, "gr": 2}
     history = train(teacher_particles=teacher, N=20, key=key, config=config, init_type="si")
     losses = history["losses"]
     assert len(losses) >= 2
     assert losses[-1] < losses[0], (
-        f"Loss UV (arbitrary) : {losses[0]:.6f} → {losses[-1]:.6f}"
+        f"UV loss (arbitrary): {losses[0]:.6f} → {losses[-1]:.6f}"
     )
 
 
 # =============================================================================
-# Smoke tests ResNet
+# ResNet smoke tests
 # =============================================================================
 
 
 def test_train_resnet_history_structure(matrix_setup):
-    """train_resnet retourne un historique bien formé, sans crash."""
+    """train_resnet returns a well-formed history, without crashing."""
     key = jax.random.PRNGKey(10)
     teacher = make_arbitrary_particles()
     L, M = 3, 10
@@ -209,16 +209,16 @@ def test_train_resnet_history_structure(matrix_setup):
     for p in history["particles"]:
         assert p.shape == (L, M, 2, 2)
     assert len(history["losses"]) == len(history["steps"]) - 1
-    assert all(jnp.isfinite(jnp.array(history["losses"]))), "Loss non finie détectée"
+    assert all(jnp.isfinite(jnp.array(history["losses"]))), "Non-finite loss detected"
 
 
 def test_train_resnet_loss_decreases(matrix_setup):
-    """Sur un court entraînement ResNet, la loss doit diminuer."""
+    """The loss must decrease over a short ResNet training run."""
     key = jax.random.PRNGKey(11)
     teacher = make_wi_particles()
     config = {**DEFAULT_CONFIG_RESNET, "T": 3.0, "gr": 3}
     history = train_resnet(teacher_particles=teacher, M=20, L=3, key=key, config=config, init_type="wi")
     losses = history["losses"]
     assert losses[-1] < losses[0], (
-        f"ResNet loss n'a pas diminué : {losses[0]:.6f} → {losses[-1]:.6f}"
+        f"ResNet loss did not decrease: {losses[0]:.6f} → {losses[-1]:.6f}"
     )

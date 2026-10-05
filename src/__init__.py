@@ -1,5 +1,12 @@
 """
 src — Mean-field symmetries in overparametrized neural networks.
+
+"The paper" in the docstrings of this package refers to:
+    J. Maass Martínez & J. Fontbona, "Symmetries in Overparametrized Neural
+    Networks: A Mean-Field View", NeurIPS 2024 (arXiv:2405.19995).
+
+The plotting helpers (src.utils) are imported lazily, so the numerical core
+can be used without matplotlib / plotly installed.
 """
 
 from src.spaces import (
@@ -45,6 +52,7 @@ from src.loss import (
 
 from src.training import (
     DEFAULT_CONFIG,
+    DEFAULT_CONFIG_UV,
     DEFAULT_CONFIG_RESNET,
     loss_fn,
     loss_fn_fa,
@@ -76,14 +84,24 @@ from src.metrics import (
     symmetrize_particles,
 )
 
-from src.utils import (
-    DEFAULT_MARKERS,
-    DEFAULT_COLORS,
-    plot_rmd_curves,
-    plot_loss_curves,
-    plot_training_curves,
-    plot_particles_3d,
-    plot_uv_equivariance,
-    plot_uv_equivariance_resnet,
-    plot_particles_3d_resnet,
-)
+# Plotting helpers are resolved lazily (PEP 562) so that importing the
+# numerical core does not pull in matplotlib / plotly.
+_PLOTTING_NAMES = {
+    "DEFAULT_MARKERS",
+    "DEFAULT_COLORS",
+    "plot_rmd_curves",
+    "plot_loss_curves",
+    "plot_training_curves",
+    "plot_particles_3d",
+    "plot_uv_equivariance",
+    "plot_uv_equivariance_resnet",
+    "plot_particles_3d_resnet",
+}
+
+
+def __getattr__(name):
+    if name in _PLOTTING_NAMES:
+        from src import utils
+
+        return getattr(utils, name)
+    raise AttributeError(f"module 'src' has no attribute {name!r}")

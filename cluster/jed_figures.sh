@@ -13,7 +13,7 @@
 # ONE-TIME SETUP (run ONCE on the LOGIN node before sbatch, so the 8
 # array tasks do NOT race to build the same venv):
 #
-#     cd ~/path/to/DOLA
+#     cd ~/path/to/dola
 #     module load gcc python
 #     python -m venv .venv_jed
 #     source .venv_jed/bin/activate
@@ -23,7 +23,7 @@
 #     #   lax.scan used by the ResNet on XLA-CPU (job sits at 0% CPU forever);
 #     #   the NN path has no scan and is unaffected.
 #
-# Then submit:   sbatch run_jed_figures.sh
+# Then submit from the repository root:   sbatch cluster/jed_figures.sh
 # ===================================================================
 #SBATCH --job-name=dola_figures
 #SBATCH --account=math-454

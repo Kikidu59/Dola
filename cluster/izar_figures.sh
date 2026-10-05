@@ -9,8 +9,10 @@
 # sequential scan over the L layers. A V100 therefore gives at best a
 # modest speedup on the deep-ResNet runs and little-to-nothing on the
 # NN / small-size runs. The more effective lever is a SLURM ARRAY that
-# parallelises the independent (setup x arch x teacher) blocks — ask if
-# you want the script wired for that.
+# parallelises the independent (setup x arch x teacher) blocks — see
+# cluster/jed_figures.sh for that variant.
+#
+# Submit from the repository root:   sbatch cluster/izar_figures.sh
 # ===================================================================
 #SBATCH --job-name=dola_figures
 #SBATCH --account=math-454
@@ -29,7 +31,7 @@ set -euo pipefail
 module purge
 module load gcc cuda python
 
-# --- run from the project root (where you submit from) -------------
+# --- run from the repository root (where sbatch is called) ---------
 cd "$SLURM_SUBMIT_DIR"
 
 # --- environment (idempotent) --------------------------------------

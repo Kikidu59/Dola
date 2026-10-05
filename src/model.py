@@ -1,7 +1,7 @@
 """
 model.py — Shallow neural network model Φ^N_θ.
 
-Implements the model from Definition 1 of the paper:
+Implements the model from Definition 1 of the paper (Maass Martínez & Fontbona, NeurIPS 2024):
     Φ^N_θ(x) = (1/N) Σᵢ σ*(x, θᵢ)
 
 where θ = (θ₁, ..., θ_N) ∈ Z^N are the N "particles" (each a 2x2 matrix),
@@ -84,9 +84,9 @@ def forward_resnet(x, particles, alpha_arch=1):
         return (
             h + (alpha_arch / L) * forward(h, l_param),
             None,
-        )  # The 1/M factor is already accounted in the forward function.
+        )  # The 1/M factor is already accounted for in forward().
 
-    # Carries x accross the loop applying step for each l in L (axis 0)
+    # Carry h across the L layers (axis 0 of particles), applying `step` at each one
     h_final, _ = jax.lax.scan(step, x, particles)
     return h_final
 
