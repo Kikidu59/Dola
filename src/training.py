@@ -62,7 +62,7 @@ DEFAULT_CONFIG_RESNET = {
 
 
 # =============================================================================
-# Loss functions (vanilla, FA, EA)
+# Loss functions (vanilla, FA, DA, EA)
 # =============================================================================
 
 
@@ -124,7 +124,7 @@ def loss_fn_ea(particles, x_batch, y_batch, tau):
 
 
 def loss_fn_resnet(particles, x_batch, y_batch, alpha_arch, tau):
-    """Vanilla ResNet loss: ℓ(h_L(x), y). No regularization."""
+    """Vanilla ResNet loss: ℓ(h_L(x), y) + τ·reg."""
     y_pred = forward_batch_resnet(x_batch, particles, alpha_arch)
     return quadratic_loss_batch(y_pred, y_batch) + tau * regularization_resnet(
         particles
@@ -260,9 +260,9 @@ def sgd_step_resnet(
     used_loss_fn,
     project_noise,
 ):
-    """One SGLD step for the ResNet. No regularization.
+    """One SGD/SGLD step for the ResNet.
 
-    θ ← θ - α · ∇L(θ, alpha_arch) + √(2βα/M) · noise
+    θ ← θ - α · ∇L(θ, alpha_arch) + √(2βα/(L·M)) · noise
 
     Args:
         particles:     (L, M, 2, 2) current parameters
@@ -271,7 +271,7 @@ def sgd_step_resnet(
         key:           JAX random key
         alpha:         learning rate
         beta:          noise intensity
-        tau:           regularization strenght
+        tau:           regularization strength
         alpha_arch:    architectural scaling constant
         used_loss_fn:  ResNet loss function to differentiate
         project_noise: if True, project noise onto E^G (for SI init)

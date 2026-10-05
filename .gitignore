@@ -1,27 +1,34 @@
-# Environnement virtuel Python
+# Python virtual environments
 .venv/
 .venv_jed/
+.venv_izar/
 
-# Fichiers compilés Python
+# Compiled Python files
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
+# Local scratch / profiling scripts
 scan_test.py
 steptime.py
 traintime.py
 
+# SLURM logs
+*.out
+
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb_checkpoints
+notebooks/*.pdf
 
 # macOS
 .DS_Store
 
-# Fichiers de build
+# Build artifacts
 *.egg-info/
 dist/
 build/
 
-# Éditeurs
+# Editors
 .vscode/
+.idea/
 *.swp

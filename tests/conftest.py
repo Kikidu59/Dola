@@ -1,10 +1,10 @@
 """
-conftest.py — Fixtures pytest partagées entre tous les fichiers de tests.
+conftest.py — Shared pytest fixtures.
 
-Fournit :
-    - any_setup  : lance le test pour les deux setups (matrix et UV), parametrize
-    - matrix_setup : force le setup matrix pour un test
-    - uv_setup     : force le setup UV pour un test
+Provides:
+    - any_setup    : parametrized fixture, runs the test once per setup (matrix and UV)
+    - matrix_setup : forces the matrix setup for a test
+    - uv_setup     : forces the UV setup for a test
 """
 import sys
 import os
@@ -18,7 +18,7 @@ import src.spaces as spaces
 
 @pytest.fixture(params=["matrix", "uv"])
 def any_setup(request):
-    """Fixture parametrized : le test tourne une fois par setup (matrix, UV)."""
+    """Parametrized fixture: the test runs once per setup (matrix, UV)."""
     if request.param == "matrix":
         spaces.SETUP = spaces.make_setup_matrix()
     else:
@@ -31,7 +31,7 @@ def any_setup(request):
 
 @pytest.fixture
 def matrix_setup():
-    """Force le setup matrix pour un test."""
+    """Force the matrix setup for a test."""
     spaces.SETUP = spaces.make_setup_matrix()
     jax.clear_caches()
     yield
@@ -41,7 +41,7 @@ def matrix_setup():
 
 @pytest.fixture
 def uv_setup():
-    """Force le setup UV pour un test."""
+    """Force the UV setup for a test."""
     spaces.SETUP = spaces.make_setup_uv()
     jax.clear_caches()
     yield

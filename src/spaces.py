@@ -4,9 +4,9 @@ spaces.py — Mathematical building blocks for the mean-field symmetry experimen
 Configurable setup: swap between different activations by changing SETUP.
 
 Setup "matrix": σ*(x, z) = σ(z·x),        z ∈ R^{2x2}, action M_g·z = g·z·gᵀ
-Setup "uv":     σ*(x, z) = v·σ(uᵀx),      z = [u; v] stored as (2,2), action M_g·(u,v) = (g·u, g·v)
+Setup "uv":     σ*(x, z) = v·σ(uᵀx / d),  z = [u; v] stored as (2,2), action M_g·(u,v) = (g·u, g·v)
 
-Usage in notebook:
+Usage (e.g. in a notebook):
     import src.spaces as spaces
     spaces.SETUP = spaces.make_setup_uv()    # switch to uv activation
     spaces.SETUP = spaces.make_setup_matrix() # switch back
@@ -64,7 +64,7 @@ def make_setup_matrix():
 
 
 # =============================================================================
-# Setup: uv activation — σ*(x, z) = v · σ(uᵀx)
+# Setup: uv activation — σ*(x, z) = v · σ(uᵀx / d), with d = 2
 # z stored as (2,2): row 0 = u, row 1 = v
 # =============================================================================
 
@@ -104,14 +104,14 @@ def make_setup_uv():
 
 
 # =============================================================================
-# Active setup (default: matrix)
+# Active setup (default: uv — set it explicitly before running anything)
 # =============================================================================
 
 SETUP = make_setup_uv()
 
 
 # =============================================================================
-# Public API — these read from SETUP, rest of codebase uses these
+# Public API — these read from SETUP; the rest of the codebase only uses these
 # =============================================================================
 
 

@@ -38,7 +38,7 @@ Usage:
     python scripts/reproduce_figures.py --skip-rmd       # only loss figures
 
 Note on runtime: the full sweep trains
-    2 setups x 2 architectures x 2 teachers x 4 techniques x 6 sizes x N_r
+    2 setups x 2 architectures x 2 teachers x 4 techniques x 5 sizes x N_r
 runs for the RMD figures (plus the loss-vs-step runs). With N or L up to 1000 and
 T = 20 / T = 5, this is a heavy computation and is meant to be run on a machine
 with enough time/compute, not interactively.

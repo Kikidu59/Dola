@@ -1,14 +1,14 @@
 """
-test_model.py — Tests pour le modèle shallow, les teachers et la loss.
+test_model.py — Tests for the shallow model, the teachers and the loss.
 
-Vérifie pour les deux setups (matrix et UV) :
-    1. Les shapes sont corrects à chaque étape
-    2. Teacher avec ses propres particules comme student → loss ≈ 0
-    3. Le teacher WI produit une fonction équivariante : f*(P·x) = P·f*(x)
-    4. Le teacher SI a ses particules dans E^G
-    5. La loss et la régularisation sont non-négatives
-    6. L'échantillonnage de données produit les bonnes shapes
-    7. make_si_particles_uv() produit des particules dans E^G (UV uniquement)
+Checks, for both setups (matrix and UV), that:
+    1. Shapes are correct at every stage
+    2. A student using the teacher's own particles reaches loss ≈ 0
+    3. The WI teacher yields an equivariant function: f*(P·x) = P·f*(x)
+    4. The SI teacher's particles lie in E^G
+    5. The loss and the regularization are non-negative
+    6. Data sampling produces the right shapes
+    7. make_si_particles_uv() produces particles in E^G (UV only)
 """
 
 import jax
@@ -39,12 +39,12 @@ TOL = 1e-5
 
 
 # =============================================================================
-# Tests de shape — indépendants du setup
+# Shape tests — setup-independent
 # =============================================================================
 
 
 def test_particle_shapes():
-    """Chaque variant de teacher produit la bonne shape."""
+    """Each teacher variant has the right shape."""
     assert make_arbitrary_particles().shape == (5, 2, 2)
     assert make_wi_particles().shape == (10, 2, 2)
 
@@ -64,7 +64,7 @@ def test_forward_batch_shape():
 
 
 def test_sample_data_shape():
-    """sample_data retourne des batches de shapes cohérentes."""
+    """sample_data returns batches with consistent shapes."""
     particles = make_arbitrary_particles()
     x, y = sample_data(jax.random.PRNGKey(0), particles, n_samples=50)
     assert x.shape == (50, 2)
@@ -72,12 +72,12 @@ def test_sample_data_shape():
 
 
 # =============================================================================
-# Tests de loss — indépendants du setup
+# Loss tests — setup-independent
 # =============================================================================
 
 
 def test_loss_shapes():
-    """Les fonctions de loss renvoient des scalaires."""
+    """The loss functions return scalars."""
     y_pred = jnp.array([0.5, 0.3])
     y_true = jnp.array([0.4, 0.6])
     assert quadratic_loss(y_pred, y_true).shape == ()
@@ -86,7 +86,7 @@ def test_loss_shapes():
 
 
 def test_loss_nonnegative():
-    """La loss et la régularisation sont toujours >= 0."""
+    """The loss and the regularization are always >= 0."""
     key = jax.random.PRNGKey(10)
     k1, k2, k3 = jax.random.split(key, 3)
     assert quadratic_loss(jax.random.normal(k1, (2,)), jax.random.normal(k2, (2,))) >= 0
@@ -94,7 +94,7 @@ def test_loss_nonnegative():
 
 
 def test_loss_zero_when_equal():
-    """La loss est 0 quand prédiction = cible."""
+    """The loss is 0 when prediction = target."""
     y = jnp.array([0.42, -0.73])
     assert jnp.allclose(quadratic_loss(y, y), 0.0, atol=1e-8)
 
@@ -106,39 +106,39 @@ def test_loss_explicit():
 
 
 # =============================================================================
-# Auto-prédiction — testés pour les deux setups
+# Self-prediction — tested for both setups
 # =============================================================================
 
 
 def test_self_prediction_loss_arbitrary(any_setup):
-    """Quand le student utilise les particules du teacher arbitrary, loss ≈ 0."""
+    """When the student uses the arbitrary teacher's particles, loss ≈ 0."""
     key = jax.random.PRNGKey(42)
     particles = make_arbitrary_particles()
     x, y = sample_data(key, particles, n_samples=100)
     loss = quadratic_loss_batch(forward_batch(x, particles), y)
-    assert loss < TOL, f"Loss auto-prédiction (arbitrary) = {loss}"
+    assert loss < TOL, f"Self-prediction loss (arbitrary) = {loss}"
 
 
 def test_self_prediction_loss_wi(any_setup):
-    """Idem pour le teacher WI."""
+    """Same for the WI teacher."""
     key = jax.random.PRNGKey(42)
     particles = make_wi_particles()
     x, y = sample_data(key, particles, n_samples=100)
     loss = quadratic_loss_batch(forward_batch(x, particles), y)
-    assert loss < TOL, f"Loss auto-prédiction (WI) = {loss}"
+    assert loss < TOL, f"Self-prediction loss (WI) = {loss}"
 
 
 def test_self_prediction_loss_si(any_setup):
-    """Idem pour le teacher SI (dépend du setup via make_si_particles)."""
+    """Same for the SI teacher (setup-dependent through make_si_particles)."""
     key = jax.random.PRNGKey(42)
     particles = make_si_particles()
     x, y = sample_data(key, particles, n_samples=100)
     loss = quadratic_loss_batch(forward_batch(x, particles), y)
-    assert loss < TOL, f"Loss auto-prédiction (SI) = {loss}"
+    assert loss < TOL, f"Self-prediction loss (SI) = {loss}"
 
 
 def test_population_risk_with_self(any_setup):
-    """Le risque populationnel avec student = teacher ≈ τ·reg (data loss ≈ 0)."""
+    """The population risk with student = teacher is ≈ τ·reg (data loss ≈ 0)."""
     key = jax.random.PRNGKey(11)
     tau = 1e-4
     particles = make_arbitrary_particles()
@@ -149,12 +149,12 @@ def test_population_risk_with_self(any_setup):
 
 
 # =============================================================================
-# Équivariance — testés pour les deux setups
+# Equivariance — tested for both setups
 # =============================================================================
 
 
 def test_wi_teacher_equivariance(any_setup):
-    """Le teacher WI est équivariant : f*(P·x) = P·f*(x)."""
+    """The WI teacher is equivariant: f*(P·x) = P·f*(x)."""
     key = jax.random.PRNGKey(7)
     particles = make_wi_particles()
     g = GROUP_ELEMENTS[1]
@@ -167,7 +167,7 @@ def test_wi_teacher_equivariance(any_setup):
 
 
 def test_si_teacher_equivariance(any_setup):
-    """Le teacher SI est aussi équivariant (SI ⊂ WI fonctionnellement)."""
+    """The SI teacher is equivariant too (SI ⊂ WI as functions)."""
     key = jax.random.PRNGKey(8)
     particles = make_si_particles()
     g = GROUP_ELEMENTS[1]
@@ -180,7 +180,7 @@ def test_si_teacher_equivariance(any_setup):
 
 
 def test_arbitrary_teacher_not_equivariant(any_setup):
-    """Le teacher arbitrary n'est généralement PAS équivariant (sanity check)."""
+    """The arbitrary teacher is generally NOT equivariant (sanity check)."""
     key = jax.random.PRNGKey(9)
     particles = make_arbitrary_particles()
     g = GROUP_ELEMENTS[1]
@@ -193,36 +193,36 @@ def test_arbitrary_teacher_not_equivariant(any_setup):
         if not jnp.allclose(lhs, rhs, atol=1e-3):
             found_difference = True
             break
-    assert found_difference, "Le teacher arbitrary semble équivariant — anormal !"
+    assert found_difference, "The arbitrary teacher looks equivariant — unexpected!"
 
 
 # =============================================================================
-# Particules SI dans E^G — testés pour les deux setups
+# SI particles lie in E^G — tested for both setups
 # =============================================================================
 
 
 def test_si_particles_in_EG(any_setup):
-    """Chaque particule SI vérifie M_g·θ = θ et project_EG(θ) = θ."""
+    """Every SI particle satisfies M_g·θ = θ and project_EG(θ) = θ."""
     particles = make_si_particles()
     g = GROUP_ELEMENTS[1]
     for i in range(particles.shape[0]):
         z = particles[i]
         assert jnp.allclose(
             action_on_z(g, z), z, atol=TOL
-        ), f"Particule SI {i} non fixée par G"
+        ), f"SI particle {i} is not fixed by G"
         assert jnp.allclose(
             project_EG(z), z, atol=TOL
-        ), f"Particule SI {i} déplacée par la projection"
+        ), f"SI particle {i} is moved by the projection"
 
 
 # =============================================================================
-# Tests spécifiques au setup UV
+# UV-setup-specific tests
 # =============================================================================
 
 
 def test_make_si_particles_uv_in_EG(uv_setup):
-    """make_si_particles_uv() produit des particules dans E^G du setup UV.
-    E^G(UV) = matrices à colonnes égales [[a,a],[b,b]]."""
+    """make_si_particles_uv() produces particles in E^G of the UV setup.
+    E^G(UV) = matrices with equal columns [[a,a],[b,b]]."""
     particles = make_si_particles_uv()
     assert particles.shape == (5, 2, 2)
     g = GROUP_ELEMENTS[1]
@@ -230,24 +230,25 @@ def test_make_si_particles_uv_in_EG(uv_setup):
         z = particles[i]
         assert jnp.allclose(
             action_on_z(g, z), z, atol=TOL
-        ), f"make_si_particles_uv : particule {i} non dans E^G(UV)"
-        # Structure concrète : colonnes égales
+        ), f"make_si_particles_uv: particle {i} is not in E^G(UV)"
+        # Concrete structure: equal columns
         assert jnp.allclose(
             z[:, 0], z[:, 1], atol=TOL
-        ), f"Particule {i} n'a pas de colonnes égales : {z}"
+        ), f"Particle {i} does not have equal columns: {z}"
 
 
 def test_si_particles_uv_structure(uv_setup):
-    """make_si_particles() en setup UV produit des matrices à colonnes égales."""
+    """make_si_particles() in the UV setup produces matrices with equal columns."""
     particles = make_si_particles()
     for i in range(particles.shape[0]):
         z = particles[i]
         assert jnp.allclose(
             z[:, 0], z[:, 1], atol=TOL
-        ), f"Particule SI {i} n'a pas de colonnes égales en setup UV : {z}"
+        ), f"SI particle {i} does not have equal columns in the UV setup: {z}"
 
 
 def test_forward_resnet_output_shape_matrix(matrix_setup):
+    """forward_resnet maps a (2,) input to a (2,) output."""
     particles = init_particles_wi_resnet(jax.random.PRNGKey(42), 3, 5)
     x = jnp.array([1.0, 2.0])
     assert forward_resnet(x, particles).shape == x.shape
