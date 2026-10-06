@@ -15,7 +15,8 @@
 # Submit from the repository root:   sbatch cluster/izar_figures.sh
 # ===================================================================
 #SBATCH --job-name=dola_figures
-#SBATCH --account=math-454
+# Set your own SLURM account below (required on SCITAS clusters).
+#SBATCH --account=<your-account>
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1

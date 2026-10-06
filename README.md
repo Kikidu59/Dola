@@ -73,7 +73,7 @@ uv run python scripts/reproduce_figures.py --reps 10 --outdir figures
 # A single block, e.g. ResNet / matrix activation / WI teacher
 uv run python scripts/reproduce_figures.py --setup matrix --arch ResNet --teacher WI
 ```
-
+On a SLURM cluster, set your account in the `#SBATCH --account` line of the script, then submit from the repository root:
 On a SLURM cluster, from the repository root:
 
 ```bash

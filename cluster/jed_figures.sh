@@ -26,7 +26,8 @@
 # Then submit from the repository root:   sbatch cluster/jed_figures.sh
 # ===================================================================
 #SBATCH --job-name=dola_figures
-#SBATCH --account=math-454
+# Set your own SLURM account below (required on SCITAS clusters).
+#SBATCH --account=<your-account>
 #SBATCH --partition=academic
 #SBATCH --array=0-7
 #SBATCH --nodes=1
